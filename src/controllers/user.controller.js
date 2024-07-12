@@ -2,8 +2,16 @@ import { asyncHandler } from "../utils/asyncHandlers.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "./../models/user.model.js";
-import jwt from "jsonwebtoken";
+// import jwt from "jsonwebtoken";
+import session from "express-session";
+import { sendOTPEmail } from "../utils/mailer.js";
 
+// generate otp
+const generateOTP = () => {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+};
+
+// register user
 const registerUser = asyncHandler(async (req, res) => {
   //get user detail from the user
   // validation - not empty
@@ -24,14 +32,43 @@ const registerUser = asyncHandler(async (req, res) => {
   const existedUser = await User.findOne({ email });
 
   if (existedUser) {
-    throw new ApiError(409, "User with email already exist");
+    throw new ApiError(409, "User with this email already exist");
   }
 
-  // create user object - create entry in db
+  const otp = generateOTP(); // generate otp
+  console.log(otp);
+  req.session.userEmail = email; // store email in session
+  req.session.otp = otp; //// store otp in session
+  req.session.userDetails = { firstName, lastName, password };
+
+  try {
+    await sendOTPEmail(email, otp);
+  } catch {
+    throw new ApiError(500, "Failed to send OTP");
+  }
+
+  return res.status(201).json(new ApiResponse(200, "OTP sent successfully"));
+});
+
+const verifyOTP = asyncHandler(async (req, res) => {
+  const { otp } = req.body;
+  const userEmail = req.session.userEmail;
+  const storedOTP = req.session.otp;
+
+  if (!userEmail || !storedOTP) {
+    throw new ApiError(400, "No session data found. Please register first.");
+  }
+
+  if (otp != storedOTP) {
+    throw new ApiError(400, "Invalid OTP");
+  }
+
+  const { firstName, lastName, password } = req.session.userDetails;
+
   const user = await User.create({
     firstName,
     lastName,
-    email,
+    email: userEmail,
     password,
   });
 
@@ -46,7 +83,34 @@ const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(200, createdUser, "User Registered Successfully"));
+    .json(new ApiResponse(200, "User registered successfully", createdUser));
 });
 
-export { registerUser };
+const submitCircleName = asyncHandler(async (req, res) => {
+  const { circleName } = req.body;
+  const userEmail = req.session.userEmail;
+  console.log(userEmail);
+  console.log(circleName);
+
+  // Update user in the database
+  const updatedUser = await User.findOneAndUpdate(
+    { email: userEmail },
+    { circleName: circleName.trim() },
+    { new: true } // Return the updated document
+  );
+
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  req.session.destroy((err) => {
+    if (err) {
+      throw new ApiError(500, "Failed to clear session");
+    }
+  });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Circle name done", updatedUser));
+});
+
+export { registerUser, verifyOTP, submitCircleName };
