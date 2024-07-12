@@ -1,18 +1,19 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.ethereal.email",
+  // host: "smtp.gmail.com",
+  service: "gmail",
   port: 587,
   secure: false,
   auth: {
-    user: "rusty.stokes@ethereal.email",
-    pass: "3NE586eDPmfMGpBrZD",
+    user: process.env.SENDER_MAIL_ID,
+    pass: process.env.SENDER_MAIL_PASSWORD,
   },
 });
 
 const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
-    from: "rusty.stokes@ethereal.email",
+    from: process.env.SENDER_MAIL_ID,
     to: email,
     subject: "Your OTP Code",
     text: `Your OTP code is ${otp}`,
