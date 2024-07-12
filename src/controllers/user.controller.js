@@ -2,13 +2,31 @@ import { asyncHandler } from "../utils/asyncHandlers.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "./../models/user.model.js";
-// import jwt from "jsonwebtoken";
 import session from "express-session";
 import { sendOTPEmail } from "../utils/mailer.js";
 
 // generate otp
 const generateOTP = () => {
   return Math.floor(1000 + Math.random() * 9000).toString();
+};
+
+//generate AccessAndRefreshTokens
+const generateAccesAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch {
+    throw new ApiError(
+      500,
+      "something went wrong while generating refresh and access tokens"
+    );
+  }
 };
 
 // register user
@@ -18,6 +36,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // check if user already exist
   // send and verify otp
   // create user objects - create entry in db
+  // circle name
 
   const { firstName, lastName, email, password } = req.body;
 
@@ -113,4 +132,86 @@ const submitCircleName = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Circle name done", updatedUser));
 });
 
-export { registerUser, verifyOTP, submitCircleName };
+//login user
+const loginUser = asyncHandler(async (req, res) => {
+  //req email and password
+  //chk email is correct or not
+  //chk password is correct
+  //generate access and referesh tokens
+  // send cookie
+
+  const { email, password } = req.body;
+  if (!email) {
+    throw new ApiError(400, "username or password is required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new ApiError(404, "user does not exist");
+  }
+
+  const isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Password is incorrect");
+  }
+
+  const { accessToken, refreshToken } = await generateAccesAndRefreshTokens(
+    user._id
+  );
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  //cookies
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged in Successfully"
+      )
+    );
+});
+
+//logout user
+const logoutUser = asyncHandler(async (req, res) => {
+  //// remove cookies
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiError(200, {}, "user logged out"));
+});
+
+export { registerUser, verifyOTP, submitCircleName, loginUser, logoutUser };
