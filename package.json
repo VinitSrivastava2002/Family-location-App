@@ -10,6 +10,7 @@
   "author": "Vinit Srivastava",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.7.2",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.6",
     "cookie-session": "^2.1.0",

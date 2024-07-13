@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "./../models/user.model.js";
 import { sendOTPEmail } from "../utils/mailer.js";
+import { verifyEmail } from "../middlewares/auth.middleware.js";
 
 // generate otp
 const generateOTP = () => {
@@ -28,6 +29,11 @@ const generateAccesAndRefreshTokens = async (userId) => {
   }
 };
 
+const isValidEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+};
+
 // register user
 const registerUser = asyncHandler(async (req, res) => {
   //get user detail from the user
@@ -44,6 +50,11 @@ const registerUser = asyncHandler(async (req, res) => {
     [firstName, lastName, email, password].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(400, "All field are required");
+  }
+
+  const emailVerificationResult = await verifyEmail(email);
+  if (emailVerificationResult.status !== "valid") {
+    throw new ApiError(400, "Email address is invalid");
   }
 
   // chk if user is already exist or not

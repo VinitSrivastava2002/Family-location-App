@@ -1,5 +1,6 @@
 // it's only verify user is exist or not
 
+import axios from "axios";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandlers.js";
@@ -32,3 +33,15 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     throw new ApiError(401, error?.message || "invalid access token");
   }
 });
+
+export const verifyEmail = async (email) => {
+  const apiKey = process.env.EMAIL_VERIFICATION_API_KEY;
+  const url = `https://api.zerobounce.net/v2/validate?api_key=${apiKey}&email=${email}`;
+
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    throw new Error("Error verifying email address");
+  }
+};
