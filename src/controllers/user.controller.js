@@ -2,7 +2,6 @@ import { asyncHandler } from "../utils/asyncHandlers.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "./../models/user.model.js";
-import session from "express-session";
 import { sendOTPEmail } from "../utils/mailer.js";
 
 // generate otp
@@ -122,11 +121,9 @@ const submitCircleName = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  req.session.destroy((err) => {
-    if (err) {
-      throw new ApiError(500, "Failed to clear session");
-    }
-  });
+  // Clear the session data after successful verification
+  req.session = null;
+
   return res
     .status(200)
     .json(new ApiResponse(200, "Circle name done", updatedUser));

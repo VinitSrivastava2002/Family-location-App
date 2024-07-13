@@ -1,7 +1,10 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import session from "express-session";
+
+//routes import
+import userRouter from "./routes/user.routes.js";
+import cookieSession from "cookie-session";
 
 const app = express();
 
@@ -19,16 +22,14 @@ app.use(cookieParser());
 
 // Configure session middleware
 app.use(
-  session({
-    secret: process.env.SESSION_KEY,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false },
+  cookieSession({
+    name: "session",
+    keys: [process.env.SESSION_KEY || "your-secret-key"], // Use the same secret key
+    // Cookie options
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: false, // Set to true if your site uses HTTPS
   })
 );
-
-//routes import
-import userRouter from "./routes/user.routes.js";
 
 app.use("/api/v1/users", userRouter);
 
