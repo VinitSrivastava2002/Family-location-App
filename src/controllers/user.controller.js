@@ -29,11 +29,6 @@ const generateAccesAndRefreshTokens = async (userId) => {
   }
 };
 
-const isValidEmail = (email) => {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
-};
-
 // register user
 const registerUser = asyncHandler(async (req, res) => {
   //get user detail from the user
@@ -52,10 +47,10 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All field are required");
   }
 
-  const emailVerificationResult = await verifyEmail(email);
-  if (emailVerificationResult.status !== "valid") {
-    throw new ApiError(400, "Email address is invalid");
-  }
+  // const emailVerificationResult = await verifyEmail(email);
+  // if (emailVerificationResult.status !== "valid") {
+  //   throw new ApiError(400, "Email address is invalid");
+  // }
 
   // chk if user is already exist or not
   const existedUser = await User.findOne({ email });
